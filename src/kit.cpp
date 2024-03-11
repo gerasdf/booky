@@ -2,7 +2,7 @@ const char* myname = "Booky";
 
 #include <SD_MMC.h>
 #include <AudioKitHAL.h>
-#include <AudioLibs/AudioA2DP.h> // install https://github.com/pschatzmann/ESP32-A2DP
+#include <BluetoothA2DPSink.h>
 
 #define FILE_WRITING
 
