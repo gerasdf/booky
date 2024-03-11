@@ -36,7 +36,8 @@ Adafruit_SSD1306 display = Adafruit_SSD1306(128, 64, &Wire);
 
 void kit_setup();
 void kit_loop();
-void kit_startPlayingFolder(char *folderName);
+void kit_startPlayingFile(char *folderName);
+int kit_isPlayingFile();
 
 extern char* myname;
 
@@ -269,7 +270,7 @@ void PN532_loop() {
   
   if (success) {
     snprintf(uid_s, sizeof(uid_s), "%02X%02X-%02X%02X", uid[0], uid[1], uid[2], uid[3]);
-    kit_startPlayingFolder(uid_s);
+    kit_startPlayingFile(uid_s);
     Serial.printf("UID (%d): %s\n", uidLength, uid_s);
     // printArray(uid, uidLength);
     display.printf(uid_s);
@@ -300,24 +301,29 @@ void setup() {
 void loop() {
   int timeOnEntry = millis();
 
-  Serial.printf("%d\n", timeOnEntry);
+  if (kit_isPlayingFile()) {
+    kit_loop();
+    return;
+  } else {
+    Serial.printf("%d\n", timeOnEntry);
 
-  // ArduinoOTA.handle();
+    // ArduinoOTA.handle();
 
-  // I2C_scan();
-  SD_loop();
-  display_loop();
+    // I2C_scan();
+    SD_loop();
+    display_loop();
 
-#ifdef USE_MFRC522
-  // RC522_loop();
+  #ifdef USE_MFRC522
+    // RC522_loop();
 
-  Serial1.write(MFRC522::VersionReg | 0x80);
-  s_consume();
-#endif // USE_MFRC522
-  PN532_loop();
+    Serial1.write(MFRC522::VersionReg | 0x80);
+    s_consume();
+  #endif // USE_MFRC522
 
-  timeOnEntry += 1000 - millis();
-  if (timeOnEntry < 0) timeOnEntry = 0;
+    PN532_loop();
 
-  delay(timeOnEntry);
+    timeOnEntry += 1000 - millis();
+    if (timeOnEntry < 0) timeOnEntry = 0;
+    delay(timeOnEntry);
+  }
 }
