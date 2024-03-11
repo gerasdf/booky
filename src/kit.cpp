@@ -9,8 +9,10 @@ const char* myname = "Booky";
 AudioKit kit;
 BluetoothA2DPSink a2dp_sink;
 
-File writingFile;
 const File nofile;
+
+File writingFile=nofile;
+File playingFile=nofile;
 
 String title = (const char *)NULL;
 String artist = (const char *)NULL;
@@ -159,9 +161,45 @@ void kit_setup() {
   a2dp_sink.set_raw_stream_reader(receiveBTRawData);
   a2dp_sink.set_avrc_metadata_callback(recieveBTMetadata);
   a2dp_sink.set_avrc_rn_playstatus_callback(receiveBTStatusChange);
+  a2dp_sink.set_sample_rate_callback(nullptr);
   a2dp_sink.start(myname);  
 }
 
-void kit_startPlayingFolder(char *folderName) {
+int kit_isPlayingFile() {
+    return !!playingFile;
+}
 
+void kit_stopPlayingFile() {
+    playingFile.close();
+    playingFile = nofile;
+}
+
+void kit_playChunkFromFile() {
+    static char buff[1024];
+    size_t read;
+
+    read = playingFile.readBytes(buff, sizeof(buff));
+    
+    if (read) kit.write(buff, read);
+
+    if (!playingFile.available()) {
+        kit_stopPlayingFile();
+    }
+}
+
+void kit_startPlayingFile(char *folderName) {
+    String path("/");
+    path += folderName;
+    path += ".wav";
+
+    if (!SD_MMC.exists(path))
+        return;
+
+    playingFile = SD_MMC.open(path, FILE_READ);
+
+    Serial.printf("Starting to play %s. Size: %d\n", path, playingFile.size());
+}
+
+void kit_loop() {
+    kit_playChunkFromFile();
 }
