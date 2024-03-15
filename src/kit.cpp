@@ -6,8 +6,6 @@ const char* myname = "Booky";
 
 #include "kit.h"
 
-#define FILE_WRITING
-
 AudioKit kit;
 BluetoothA2DPSink a2dp_sink;
 
@@ -101,24 +99,11 @@ void receiveBTStatusChange(esp_avrc_playback_stat_t playback) {
   switch (playback) {
     case ESP_AVRC_PLAYBACK_PLAYING:
       Serial.println("It's Now PLAYING");
-      if (recordingFile) {
-        recordingFile.close();
-        recordingFile = nofile;
-      }
-#ifdef FILE_WRITING
-      if (title) {
-        recordingFile = SD_MMC.open("/" + title + ".wav", FILE_WRITE);
-        writeWAVHdr();
-      }
-#endif
       break;
     case ESP_AVRC_PLAYBACK_PAUSED:
     case ESP_AVRC_PLAYBACK_STOPPED:
       Serial.println("It's Now STOPPPED");
-      if (recordingFile) {
-        recordingFile.close();
-        recordingFile = nofile;
-      }
+      kit_stopRecording();
       break;
     default:
       Serial.printf("Status has changerd to %d\n", playback);
@@ -174,8 +159,8 @@ void kit_startPlaying(char *s_uid) {
   path += s_uid;
   path += ".wav";
 
-  if (kit_isPlaying())
-    kit_stopPlaying();
+  kit_stopPlaying();
+  kit_stopRecording();
 
   if (!SD_MMC.exists(path))
       return;
@@ -186,8 +171,10 @@ void kit_startPlaying(char *s_uid) {
 }
 
 void kit_stopPlaying() {
-  playingFile.close();
-  playingFile = nofile;
+  if (playingFile) {
+    playingFile.close();
+    playingFile = nofile;
+  }
 }
 
 int kit_isPlaying() {
@@ -213,7 +200,21 @@ void kit_startRecording(char *s_uid) {
   path += ".wav";
 
   kit_stopPlaying();
+  kit_stopRecording();
 
+  recordingFile = SD_MMC.open("/" + title + ".wav", FILE_WRITE);
+  writeWAVHdr();
+}
+
+void kit_stopRecording() {
+  if (recordingFile) {
+    recordingFile.close();
+    recordingFile = nofile;
+  }
+}
+
+int kit_isRecording() {
+  return !!recordingFile;
 }
 
 void kit_loop() {
