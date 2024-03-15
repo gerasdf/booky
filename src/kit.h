@@ -10,5 +10,5 @@ void kit_startRecording(char *s_uid);
 void kit_stopRecording();
 int kit_isRecording();
 
-extern char* myname;
+extern const char* myname;
 #endif // __KIT_H__
