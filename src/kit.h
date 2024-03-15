@@ -9,4 +9,6 @@ int kit_isPlaying();
 void kit_startRecording(char *s_uid);
 void kit_stopRecording();
 int kit_isRecording();
+
+extern char* myname;
 #endif // __KIT_H__

@@ -35,8 +35,6 @@ Adafruit_SSD1306 display = Adafruit_SSD1306(128, 64, &Wire);
 #include "wifi_settings.h"
 #include "kit.h"
 
-extern char* myname;
-
 void WiFi_OTA_setup() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
