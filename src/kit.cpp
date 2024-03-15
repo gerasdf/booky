@@ -192,6 +192,9 @@ void kit_startPlayingFile(char *folderName) {
     path += folderName;
     path += ".wav";
 
+    if (kit_isPlayingFile())
+      kit_stopPlayingFile();
+
     if (!SD_MMC.exists(path))
         return;
 
