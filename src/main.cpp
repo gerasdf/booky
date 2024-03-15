@@ -260,13 +260,13 @@ void printArray(byte *buffer, byte bufferSize) {
    }
 }
 
-void PN532_loop() {
+void PN532_loop(uint16_t timeout) {
   boolean success;
   uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };
   char uid_s[10];
   uint8_t uidLength;
 
-  success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength, 250);
+  success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength, timeout);
   
   if (success) {
     snprintf(uid_s, sizeof(uid_s), "%02X%02X-%02X%02X", uid[0], uid[1], uid[2], uid[3]);
@@ -301,17 +301,15 @@ void setup() {
 void loop() {
   int timeOnEntry = millis();
 
+  kit_loop();
+  Serial.printf("%d\n", timeOnEntry);
   if (kit_isPlayingFile()) {
-    kit_loop();
-    return;
+    PN532_loop(20);
   } else {
-    Serial.printf("%d\n", timeOnEntry);
-
     // ArduinoOTA.handle();
 
     // I2C_scan();
     SD_loop();
-    display_loop();
 
   #ifdef USE_MFRC522
     // RC522_loop();
@@ -320,7 +318,8 @@ void loop() {
     s_consume();
   #endif // USE_MFRC522
 
-    PN532_loop();
+    display_loop();
+    PN532_loop(500);
 
     timeOnEntry += 1000 - millis();
     if (timeOnEntry < 0) timeOnEntry = 0;
