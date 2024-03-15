@@ -201,5 +201,6 @@ void kit_startPlayingFile(char *folderName) {
 }
 
 void kit_loop() {
+  if (kit_isPlayingFile())
     kit_playChunkFromFile();
 }
