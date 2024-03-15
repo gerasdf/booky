@@ -175,7 +175,7 @@ void kit_stopPlayingFile() {
 }
 
 void kit_playChunkFromFile() {
-    static char buff[1024];
+    static char buff[5200];
     size_t read;
 
     read = playingFile.readBytes(buff, sizeof(buff));
