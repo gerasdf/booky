@@ -10,9 +10,10 @@
 // ==> Example A2DP Receiver which uses the A2DP I2S output to an AudioKit board
 #include <Wire.h>
 
-#define I2C_SDA_IO    5
-#define I2C_SCL_IO    18
-#define SD_DETECT_IO  GPIO_NUM_34
+#define I2C_SDA_IO        5
+#define I2C_SCL_IO        18
+#define SD_DETECT_IO      GPIO_NUM_34
+#define RECORD_BUTTON_IO  GPIO_NUM_19
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -254,6 +255,10 @@ void printArray(byte *buffer, byte bufferSize) {
    }
 }
 
+int recordButtonPressed() {
+  return !gpio_get_level(RECORD_BUTTON_IO);
+}
+
 void PN532_loop(uint16_t timeout) {
   boolean success;
   uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };
@@ -264,7 +269,11 @@ void PN532_loop(uint16_t timeout) {
   
   if (success) {
     snprintf(uid_s, sizeof(uid_s), "%02X%02X-%02X%02X", uid[0], uid[1], uid[2], uid[3]);
-    kit_startPlaying(uid_s);
+    if (recordButtonPressed()) {
+      kit_startRecording(uid_s);
+    } else {
+      kit_startPlaying(uid_s);
+    }
     Serial.printf("UID (%d): %s\n", uidLength, uid_s);
     // printArray(uid, uidLength);
     display.printf(uid_s);
@@ -282,6 +291,8 @@ void display_loop() {
 void setup() {
   Serial.begin(921600);
 
+  gpio_set_direction(RECORD_BUTTON_IO, GPIO_MODE_INPUT);
+
   kit_setup();
 
   // WiFi_OTA_setup();
@@ -296,7 +307,7 @@ void loop() {
   int timeOnEntry = millis();
 
   kit_loop();
-  Serial.printf("%d\n", timeOnEntry);
+  Serial.printf("time: %dms RAM: %d bytes free\n", timeOnEntry, esp_get_free_heap_size());
   if (kit_isPlaying()) {
     PN532_loop(20);
   } else {

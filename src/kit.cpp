@@ -71,8 +71,10 @@ void writeWAVHdr() {
 }
 
 void receiveBTRawData(const uint8_t *data, uint32_t length) {
-  if (recordingFile)
+  if (recordingFile) {
     recordingFile.write(data, length);
+    Serial.write('.');
+  }
 }
 
 void recieveBTMetadata(uint8_t id, const uint8_t*text) {
@@ -103,7 +105,7 @@ void receiveBTStatusChange(esp_avrc_playback_stat_t playback) {
     case ESP_AVRC_PLAYBACK_PAUSED:
     case ESP_AVRC_PLAYBACK_STOPPED:
       Serial.println("It's Now STOPPPED");
-      kit_stopRecording();
+      kit_stopAll();
       break;
     default:
       Serial.printf("Status has changerd to %d\n", playback);
@@ -159,21 +161,27 @@ void kit_startPlaying(char *s_uid) {
   path += s_uid;
   path += ".wav";
 
-  kit_stopPlaying();
-  kit_stopRecording();
+  kit_stopAll();
 
   if (!SD_MMC.exists(path))
       return;
 
   playingFile = SD_MMC.open(path, FILE_READ);
+  playingFile.seek(44); // cheaply skip WAV header
 
-  Serial.printf("Starting to play %s. Size: %d\n", path, playingFile.size());
+  Serial.printf("Starting to play %s. Size: %d\n", path.c_str(), playingFile.size());
 }
 
-void kit_stopPlaying() {
+void kit_stopAll() {
   if (playingFile) {
     playingFile.close();
     playingFile = nofile;
+    Serial.println("Stopped playing");
+  }
+  if (recordingFile) {
+    recordingFile.close();
+    recordingFile = nofile;
+    Serial.println("Stopped recording");
   }
 }
 
@@ -189,8 +197,8 @@ void playChunkFromFile() {
   
   if (read) kit.write(buff, read);
 
-  if (!playingFile.available()) {
-      kit_stopPlaying();
+  if (read < sizeof(buff)) {
+      kit_stopAll();
   }
 }
 
@@ -199,18 +207,11 @@ void kit_startRecording(char *s_uid) {
   path += s_uid;
   path += ".wav";
 
-  kit_stopPlaying();
-  kit_stopRecording();
+  kit_stopAll();
 
-  recordingFile = SD_MMC.open("/" + title + ".wav", FILE_WRITE);
+  recordingFile = SD_MMC.open(path, FILE_WRITE);
+  Serial.println("Started recording " + path);
   writeWAVHdr();
-}
-
-void kit_stopRecording() {
-  if (recordingFile) {
-    recordingFile.close();
-    recordingFile = nofile;
-  }
 }
 
 int kit_isRecording() {
