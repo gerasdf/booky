@@ -4,6 +4,8 @@ const char* myname = "Booky";
 #include <AudioKitHAL.h>
 #include <BluetoothA2DPSink.h>
 
+#include "kit.h"
+
 #define FILE_WRITING
 
 AudioKit kit;
@@ -11,7 +13,7 @@ BluetoothA2DPSink a2dp_sink;
 
 const File nofile;
 
-File writingFile=nofile;
+File recordingFile=nofile;
 File playingFile=nofile;
 
 String title = (const char *)NULL;
@@ -47,6 +49,9 @@ void writeWAVHdr() {
     char  data[4];        /* "data"                                  */
     long  dlength;        /* data length in bytes (filelength - 44)  */
   } wavh;
+
+  if (!recordingFile) return;
+
   memcpy(wavh.riff,"RIFF",4);
   memcpy(wavh.wave,"WAVE",4);
   memcpy(wavh.fmt_,"fmt ",4);
@@ -64,13 +69,12 @@ void writeWAVHdr() {
   wavh.flength = -1;    // Hack that apparently works, so we don't have to go back and write the header
   wavh.dlength = -1;    // Hack that apparently works
 
-  if (writingFile)
-    writingFile.write((uint8_t*)&wavh, sizeof wavh);
+  recordingFile.write((uint8_t*)&wavh, sizeof wavh);
 }
 
 void receiveBTRawData(const uint8_t *data, uint32_t length) {
-  if (writingFile)
-    writingFile.write(data, length);
+  if (recordingFile)
+    recordingFile.write(data, length);
 }
 
 void recieveBTMetadata(uint8_t id, const uint8_t*text) {
@@ -97,13 +101,13 @@ void receiveBTStatusChange(esp_avrc_playback_stat_t playback) {
   switch (playback) {
     case ESP_AVRC_PLAYBACK_PLAYING:
       Serial.println("It's Now PLAYING");
-      if (writingFile) {
-        writingFile.close();
-        writingFile = nofile;
+      if (recordingFile) {
+        recordingFile.close();
+        recordingFile = nofile;
       }
 #ifdef FILE_WRITING
       if (title) {
-        writingFile = SD_MMC.open("/" + title + ".wav", FILE_WRITE);
+        recordingFile = SD_MMC.open("/" + title + ".wav", FILE_WRITE);
         writeWAVHdr();
       }
 #endif
@@ -111,9 +115,9 @@ void receiveBTStatusChange(esp_avrc_playback_stat_t playback) {
     case ESP_AVRC_PLAYBACK_PAUSED:
     case ESP_AVRC_PLAYBACK_STOPPED:
       Serial.println("It's Now STOPPPED");
-      if (writingFile) {
-        writingFile.close();
-        writingFile = nofile;
+      if (recordingFile) {
+        recordingFile.close();
+        recordingFile = nofile;
       }
       break;
     default:
@@ -165,45 +169,54 @@ void kit_setup() {
   a2dp_sink.start(myname);  
 }
 
-int kit_isPlayingFile() {
-    return !!playingFile;
+void kit_startPlaying(char *s_uid) {
+  String path("/");
+  path += s_uid;
+  path += ".wav";
+
+  if (kit_isPlaying())
+    kit_stopPlaying();
+
+  if (!SD_MMC.exists(path))
+      return;
+
+  playingFile = SD_MMC.open(path, FILE_READ);
+
+  Serial.printf("Starting to play %s. Size: %d\n", path, playingFile.size());
 }
 
-void kit_stopPlayingFile() {
-    playingFile.close();
-    playingFile = nofile;
+void kit_stopPlaying() {
+  playingFile.close();
+  playingFile = nofile;
 }
 
-void kit_playChunkFromFile() {
-    static char buff[5200];
-    size_t read;
-
-    read = playingFile.readBytes(buff, sizeof(buff));
-    
-    if (read) kit.write(buff, read);
-
-    if (!playingFile.available()) {
-        kit_stopPlayingFile();
-    }
+int kit_isPlaying() {
+  return !!playingFile;
 }
 
-void kit_startPlayingFile(char *folderName) {
-    String path("/");
-    path += folderName;
-    path += ".wav";
+void playChunkFromFile() {
+  static char buff[5200];
+  size_t read;
 
-    if (kit_isPlayingFile())
-      kit_stopPlayingFile();
+  read = playingFile.readBytes(buff, sizeof(buff));
+  
+  if (read) kit.write(buff, read);
 
-    if (!SD_MMC.exists(path))
-        return;
+  if (!playingFile.available()) {
+      kit_stopPlaying();
+  }
+}
 
-    playingFile = SD_MMC.open(path, FILE_READ);
+void kit_startRecording(char *s_uid) {
+  String path("/");
+  path += s_uid;
+  path += ".wav";
 
-    Serial.printf("Starting to play %s. Size: %d\n", path, playingFile.size());
+  kit_stopPlaying();
+
 }
 
 void kit_loop() {
-  if (kit_isPlayingFile())
-    kit_playChunkFromFile();
+  if (kit_isPlaying())
+    playChunkFromFile();
 }

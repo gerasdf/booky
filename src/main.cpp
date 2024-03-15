@@ -33,11 +33,7 @@ Adafruit_SSD1306 display = Adafruit_SSD1306(128, 64, &Wire);
 
 #include <ArduinoOTA.h>
 #include "wifi_settings.h"
-
-void kit_setup();
-void kit_loop();
-void kit_startPlayingFile(char *folderName);
-int kit_isPlayingFile();
+#include "kit.h"
 
 extern char* myname;
 
@@ -270,7 +266,7 @@ void PN532_loop(uint16_t timeout) {
   
   if (success) {
     snprintf(uid_s, sizeof(uid_s), "%02X%02X-%02X%02X", uid[0], uid[1], uid[2], uid[3]);
-    kit_startPlayingFile(uid_s);
+    kit_startPlaying(uid_s);
     Serial.printf("UID (%d): %s\n", uidLength, uid_s);
     // printArray(uid, uidLength);
     display.printf(uid_s);
@@ -303,7 +299,7 @@ void loop() {
 
   kit_loop();
   Serial.printf("%d\n", timeOnEntry);
-  if (kit_isPlayingFile()) {
+  if (kit_isPlaying()) {
     PN532_loop(20);
   } else {
     // ArduinoOTA.handle();
